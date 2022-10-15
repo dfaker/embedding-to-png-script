@@ -1,2 +1,6 @@
 # embedding-to-png-script
-Converts stable diffusion embeddings to loadable pngs
+
+
+- *Source embedding to convert* - an existing embedding file to convert.
+- *Embedding token* - toke to use for the embedding and display on the image.
+- *Output directory* - Output folder.
