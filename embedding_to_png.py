@@ -2,11 +2,11 @@ import modules.scripts as scripts
 import gradio as gr
 import os
 import torch
-from modules import sd_models, sd_hijack
+import io
+from modules import devices, sd_models, sd_hijack
 from PIL import PngImagePlugin
 from modules.processing import Processed, process_images
 from modules.shared import opts, cmd_opts, state
-
 from modules.textual_inversion.image_embedding import (
     caption_image_overlay, 
     insert_image_data_embed,
@@ -42,25 +42,65 @@ class Script(scripts.Script):
             data = extract_image_data_embed(Image.open(embedding.name))
 
         assert data is not None
-        
+
+
+        # textual inversion embeddings
+        if 'string_to_param' in data:
+            param_dict = data['string_to_param']
+            if hasattr(param_dict, '_parameters'):
+                param_dict = getattr(param_dict, '_parameters')  # fix for torch 1.12.1 loading saved file from torch 1.11
+            assert len(param_dict) == 1, 'embedding file has multiple terms in it'
+            emb = next(iter(param_dict.items()))[1]
+        # diffuser concepts
+        elif type(data) == dict and type(next(iter(data.values()))) == torch.Tensor:
+            assert len(data.keys()) == 1, 'embedding file has multiple terms in it'
+
+            emb = next(iter(data.values()))
+            if len(emb.shape) == 1:
+                emb = emb.unsqueeze(0)
+        else:
+            raise Exception(f"Couldn't identify {filename} as neither textual inversion embedding nor diffuser concept.")
+
+        checkpoint = sd_models.select_checkpoint()
+
+        emb_data = {
+            "string_to_token": {"*": 265},
+            "string_to_param": {"*": emb.detach().to(devices.device, dtype=torch.float32)},
+            "name": embedding_token,
+            "step": data.get('step', 0),
+            "sd_checkpoint": data.get('hash', None),
+            "sd_checkpoint_name": data.get('sd_checkpoint_name', None),
+        }
+
+        data = emb_data
+
         processed = process_images(p)
         image = processed.images[0]
+
+        title = ' '
+
+        if 'name' in data:
+            title = "<{}>".format(embedding_token)
 
         info = PngImagePlugin.PngInfo()
         data['name'] = embedding_token
         info.add_text("sd-ti-embedding", embedding_to_b64(data))
 
-        title = "<{}>".format(embedding_token)
-
         try:
             vectorSize = list(data['string_to_param'].values())[0].shape[0]
         except Exception as e:
-            vectorSize = '?'
-
-        checkpoint = sd_models.select_checkpoint()
+            vectorSize = None
+        
         footer_left = checkpoint.model_name
         footer_mid = '[{}]'.format(checkpoint.hash)
-        footer_right = '{}v {}s'.format(vectorSize, data.get('step', 0))
+        footer_right = ' '
+
+        if vectorSize is not None:
+            footer_right += '{}v'.format(vectorSize)
+
+        if data.get('step', 0) > 0:
+            footer_right += ' {}s'.format(data.get('step', 0))
+
 
         captioned_image = caption_image_overlay(image, title, footer_left, footer_mid, footer_right)
         captioned_image = insert_image_data_embed(captioned_image, data)
