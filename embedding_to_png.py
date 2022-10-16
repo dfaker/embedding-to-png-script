@@ -47,7 +47,7 @@ class Script(scripts.Script):
         image = processed.images[0]
 
         info = PngImagePlugin.PngInfo()
-        
+        data['name'] = embedding_token
         info.add_text("sd-ti-embedding", embedding_to_b64(data))
 
         title = "<{}>".format(embedding_token)
