@@ -59,7 +59,7 @@ class Script(scripts.Script):
             if len(emb.shape) == 1:
                 emb = emb.unsqueeze(0)
         else:
-            raise Exception(f"Couldn't identify {filename} as neither textual inversion embedding nor diffuser concept.")
+            raise Exception("Couldn't identify embedding as neither textual inversion embedding nor diffuser concept.")
 
         checkpoint = sd_models.select_checkpoint()
 
