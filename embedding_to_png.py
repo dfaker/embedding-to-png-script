@@ -43,6 +43,13 @@ class Script(scripts.Script):
 
         assert data is not None
 
+        original_name = os.path.splitext(os.path.basename(os.path.split(embedding.orig_name)[-1]))[0]
+
+        if p.prompt == '':
+            p.prompt = original_name
+
+        if embedding_token == '':
+            embedding_token = original_name
 
         # textual inversion embeddings
         if 'string_to_param' in data:
@@ -59,7 +66,7 @@ class Script(scripts.Script):
             if len(emb.shape) == 1:
                 emb = emb.unsqueeze(0)
         else:
-            raise Exception("Couldn't identify embedding as neither textual inversion embedding nor diffuser concept.")
+            raise Exception(f"Couldn't identify embedding as either textual inversion embedding nor diffuser concept.")
 
         checkpoint = sd_models.select_checkpoint()
 
