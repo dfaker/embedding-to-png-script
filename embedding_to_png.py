@@ -8,12 +8,13 @@ from PIL import PngImagePlugin
 from modules.processing import Processed, process_images
 from modules.shared import opts, cmd_opts, state
 from modules.textual_inversion.image_embedding import (
-    caption_image_overlay, 
+    caption_image_overlay,
     insert_image_data_embed,
     extract_image_data_embed,
     embedding_to_b64,
     embedding_from_b64,
 )
+
 
 class Script(scripts.Script):
 
@@ -23,18 +24,18 @@ class Script(scripts.Script):
     def ui(self, is_img2img):
         embedding = gr.File(label="Source embedding to convert")
         embedding_token = gr.Textbox(label="Embedding token")
-        destination_folder = gr.Textbox(label="Output directory",value=r"outputs")
-        return [embedding,embedding_token,destination_folder]
+        destination_folder = gr.Textbox(label="Output directory", value="outputs")
+        return [embedding, embedding_token, destination_folder]
 
-    def run(self, p, embedding,embedding_token,destination_folder):
-        print(embedding,embedding_token,destination_folder)
+    def run(self, p, embedding, embedding_token, destination_folder):
+        print(embedding, embedding_token, destination_folder)
         assert os.path.exists(destination_folder)
         sd_hijack.model_hijack.embedding_db.load_textual_inversion_embeddings()
 
-        p.width=512
-        p.height=512
+        p.width = 512
+        p.height = 512
 
-        embedding_token = embedding_token.replace('<','').replace('>','').strip()
+        embedding_token = embedding_token.replace('<', '').replace('>', '').strip()
 
         try:
             data = torch.load(embedding.name)
@@ -97,7 +98,7 @@ class Script(scripts.Script):
             vectorSize = list(data['string_to_param'].values())[0].shape[0]
         except Exception as e:
             vectorSize = None
-        
+
         footer_left = checkpoint.model_name
         footer_mid = '[{}]'.format(checkpoint.hash)
         footer_right = ' '
@@ -108,14 +109,11 @@ class Script(scripts.Script):
         if data.get('step', 0) > 0:
             footer_right += ' {}s'.format(data.get('step', 0))
 
-
         captioned_image = caption_image_overlay(image, title, footer_left, footer_mid, footer_right)
         captioned_image = insert_image_data_embed(captioned_image, data)
 
-        captioned_image.save(os.path.join(destination_folder,embedding_token+'.png'), "PNG", pnginfo=info)
+        captioned_image.save(os.path.join(destination_folder, embedding_token+'.png'), "PNG", pnginfo=info)
 
         processed.images += [captioned_image]
 
         return processed
-    
-    
