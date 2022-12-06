@@ -32,9 +32,6 @@ class Script(scripts.Script):
         assert os.path.exists(destination_folder)
         sd_hijack.model_hijack.embedding_db.load_textual_inversion_embeddings()
 
-        p.width = 512
-        p.height = 512
-
         embedding_token = embedding_token.replace('<', '').replace('>', '').strip()
 
         try:
